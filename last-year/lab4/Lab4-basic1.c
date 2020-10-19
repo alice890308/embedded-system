@@ -7,6 +7,7 @@
 volatile unsigned int flag0 = 0;
 volatile unsigned int flag2 = 0;
 volatile unsigned int k0 = 1;
+// k0用來判斷是不是剛從mode1跳到mode2，或是相反
 volatile unsigned int mode = 1;
 volatile unsigned int temp;
 
@@ -51,7 +52,7 @@ __interrupt void ADC10_ISR(void){
     }
 }
 
-
+// 控制LED燈的閃爍時間
 #pragma vector = TIMER1_A0_VECTOR
 __interrupt void TA1_ISR(void) {
   if (mode == 1) {
