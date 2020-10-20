@@ -19,12 +19,16 @@ void main(void) {
   ADC10CTL0 = ADC10SHT_2 + ADC10ON + ADC10IE + SREF_1 + REFON;
   ADC10CTL1 = INCH_10;    // Input from A1
   ADC10AE0 |= 0x02; // Enable pin A1 for analog in
+  ADC10CTL0 |= ENC + ADC10SC; // Start sampling
+  
   P1DIR |= 0x41;    // Set P1.0 to output
+  
   BCSCTL3 |= LFXT1S_2;
+
+  // timer1 setting
   TA1CTL = MC_1|ID_2|TASSEL_1|TACLR; //Setup Timer0_A
   TA1CCR0 = 299; // Upper limit of count for TA0R
   TA1CCTL0 = CCIE; // Enable interrupts
-  ADC10CTL0 |= ENC + ADC10SC; // Start sampling
 
   TA0CCR0 = 7200-1;     // Sampling period
   TA0CTL = MC_1|ID_3|TASSEL_2|TACLR;

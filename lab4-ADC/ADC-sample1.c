@@ -36,6 +36,6 @@ __interrupt void ADC10_ISR(void)
   if (ADC10MEM < 0x1FF)
     P1OUT &= ~0x01;
   else
-    P1OUT |= 0x01;
+    P1OUT |= 0x01
   ADC10CTL0 |= ENC + ADC10SC; // enable sampling
 }

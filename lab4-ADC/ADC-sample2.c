@@ -27,7 +27,9 @@ void main(void)
     ADC10CTL0 = SREF_1 + ADC10SHT_2 + REFON + ADC10ON + ADC10IE;
     ADC10CTL0 |= ENC;   // ADC10 Enable
     ADC10AE0 |= 0x02;   // P1.1 ADC10 option select
+    
     P1DIR |= 0x01;      // Set P1.0 output
+    
     TA0CCR0 = 2048 - 1; // Sampling period
     // Timer0_A CCR1 out mode 3: The output (OUT1) is set when the timer counts to the
     // TA0CCR1 value and is reset when the timer counts to the TA0CCR0 value

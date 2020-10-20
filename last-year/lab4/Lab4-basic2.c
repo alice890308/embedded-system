@@ -41,6 +41,7 @@ void main(void)
     TA1CCR0 = 1199;                             // every 1200 times = 0.1 sec
     TA1CTL = MC_1 | ID_0 | TASSEL_1 | TACLR;    // count up, divider = 1, use the ACLK, clear the register
     TA1CCTL0 |= CCIE;                           // enable clock interrupt
+    TA0CCR1 = 3125 - 2;
 
     // ADC10
     ADC10CTL0 = SREF_1 | ADC10SHT_2 | REFON | ADC10ON | ADC10IE;    // standard usage
@@ -48,19 +49,15 @@ void main(void)
     ADC10CTL0 |= ENC + ADC10SC;                                     // enable sampling
 
     // SMLK DCO 1.5v
-    DCOCTL = CALDCO_1MHZ;                                           // Set DCO as 1MHz
-    BCSCTL1 = CALBC1_1MHZ;                                          // BCSCTL1 Calibration Data for 1MHz
-    BCSCTL2 &= SELS;                                                // SELS = 0 -> select DCO as clk
-    BCSCTL2 |= DIVS_3;                                              // use DCO as clk(default) source and divider = 8 => clk became 125KHz
+    DCOCTL = CALDCO_1MHZ;      // Set DCO as 1MHz
+    BCSCTL1 = CALBC1_1MHZ;     // BCSCTL1 Calibration Data for 1MHz
+    BCSCTL2 &= SELS;           // SELS = 0 -> select DCO as clk
+    BCSCTL2 |= DIVS_3;         // use DCO as clk(default) source and divider = 8 => clk became 125KHz
 
     // Timer 0 setting
     TA0CCTL1 |= OUTMOD_3;                                           // OUTMOD3: The output (OUT1) is set when the timer counts to the TA0CCR1 value and is reset when the timer counts to the TA0CCR0 value.
-    TA0CTL = MC_1 | ID_3 | TASSEL_2 | TACLR;                        // sel SMCLK ; mode = count_up ; divider = 3 ; Clear the current TAR0
-                                                                    // current clock become 125KHz / 8 = 15625 Hz
+    TA0CTL = MC_1 | ID_3 | TASSEL_2 | TACLR;                        // sel SMCLK ; mode = count_up ; divider = 3 ; Clear the current TAR0                                                                 // current clock become 125KHz / 8 = 15625 Hz
     TA0CCR0 = 3125 - 1;                                             // 0.2 sec = 3125 Hz
-
-    TA0CCR1 = 3125 - 2;
-
 
     _BIS_SR(GIE);
     ADC10DTC1 = 5;     // # of transfers
