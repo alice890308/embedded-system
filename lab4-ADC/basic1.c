@@ -27,7 +27,7 @@ int main()
     // timer 0 for sampling 
     TA0CTL |= MC_1|ID_3|TASSEL_2|TACLR;
     TA0CCTL0 |= CCIE; // enable timer 0的interrupt
-    TA0CCR0 = 13680-1;
+    TA0CCR0 = 13680-1; //0.8sec
 
     BCSCTL3 |= LFXT1S_2; // 使用VLO clock
 

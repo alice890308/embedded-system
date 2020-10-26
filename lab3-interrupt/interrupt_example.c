@@ -29,6 +29,7 @@ int main(void)
     // TASSEL系列：選擇不同種類的clock source
     // TASSEL_0: TACLK, TASSEL_1: ACLK
     // TASSEL_2: SMCLK, TASSEL_3: INCLK
+    /*SMCLK原本的頻率是1.1M*/
 
     // TACLR: 把timer的時間歸零
     TA1CTL |= MC_1 | ID_3 | TASSEL_2 | TACLR;
