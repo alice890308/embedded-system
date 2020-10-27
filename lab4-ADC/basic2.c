@@ -14,11 +14,11 @@ volatile int change_to_measure_high = 0;
 volatile int change_to_normal = 0;
 volatile int measuring = 0;
 volatile int i; // 計算平均溫度用
-volatile int average = 0;
+volatile double average = 0;
 volatile int adc[4]={0};
 volatile int threshold = 4;
 volatile double temp = 0;
-volatile int sum = 0;
+volatile double sum = 0;
 volatile int count = 0; // for button time
 
 int main()
@@ -26,6 +26,17 @@ int main()
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
 
     P1DIR |= 0x41; //設成1表示output，設成0表示input，default是0
+
+    // timer 0 for sampling
+    TA0CTL |= MC_3|ID_3|TASSEL_2|TACLR;
+    TA0CCTL1 = OUTMOD_3;
+    TA0CCTL0 |= CCIE; // enable timer 0的interrupt
+    TA0CCR0 = 42968; // 2.5sec
+
+    // timer 1 for led
+    TA1CTL |= MC_1|ID_0|TASSEL_1|TACLR;
+    TA1CCTL0 |= CCIE;// enable timer 1的interrupt
+    TA1CCR0 = 5999; // 0.5 sec
 
     // button
     P1REN |= BIT3;
@@ -36,22 +47,12 @@ int main()
     //_BIS_SR(GIE);
 
     ADC10CTL0 = ADC10SHT_2 | ADC10ON | ADC10IE | SREF_1 | REFON;
+    ADC10CTL0 &= ~REF2_5V;
     ADC10CTL1 = SHS_1 | CONSEQ_2 | INCH_10;    // Input from A1
     ADC10CTL0 &= ~ENC; // close sampling
     // DTC
     ADC10DTC1 = 4; // number of transfers
     ADC10SA = (int)adc; // buffer starting address
-
-    // timer 1 for led
-    TA1CTL |= MC_1|ID_0|TASSEL_1|TACLR;
-    TA1CCTL0 |= CCIE;// enable timer 1的interrupt
-    TA1CCR0 = 5999; // 0.5 sec
-
-    // timer 0 for sampling
-    TA0CTL |= MC_1|ID_3|TASSEL_2|TACLR;
-    TA0CCTL1 = OUTMOD_3;
-    TA0CCTL0 |= CCIE; // enable timer 0的interrupt
-    TA0CCR0 = 42968; // 2.5sec
 
     BCSCTL2 |= DIVS_3; // DIVS_x是SMCLK的divider，算法和前面的ID一樣，已經除以16，所以是125KHz
     BCSCTL3 |= LFXT1S_2; // 使用VLO clock
@@ -62,7 +63,8 @@ int main()
 
     led_state = 0;
     __enable_interrupt();
-
+    TA0CTL |= MC_1|ID_3|TASSEL_2|TACLR;
+    TA0CCR0 = 42968; // 2.5sec
     for(;;) {
         if (measuring == 1) {
             measuring = 0;
@@ -72,7 +74,7 @@ int main()
                 temp = adc[i];
                 sum += temp;
             }
-            sum = sum * 1.5/1023;
+            sum = sum * 1.5 / 1023.0;
             average = (sum/4 - 0.986) / 0.00355;
             if (average < threshold) {
                 if (state != measure_low) {
