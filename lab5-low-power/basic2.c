@@ -10,8 +10,12 @@ volatile unsigned int flag = 0; // 0: low-> high, 1: high->low
 volatile double temp = 0.0;
 volatile double time = 0.0;
 volatile int threshold = 28;
+volatile int i; // 計算平均溫度用
+volatile double average = 0;
+volatile double sum = 0;
 volatile int adc[4] = {0};
 volatile int click = 0;
+volatile int sec25 = 0;
 
 int main()
 {
@@ -22,7 +26,7 @@ int main()
     ADC10CTL0 = ADC10SHT_2 + ADC10ON + ADC10IE + SREF_1 + REFON;
     ADC10CTL1 = INCH_10;        // Input from A1
     ADC10AE0 |= 0x02;           // Enable pin A1 for analog in
-    ADC10CTL0 |= ENC + ADC10SC; // Start sampling
+//    ADC10CTL0 |= ENC + ADC10SC; // Start sampling
     ADC10CTL0 &= ~REF2_5V;
     //DTC
     ADC10DTC1 = 4;      // number of transfers
@@ -55,9 +59,7 @@ int main()
     led_state = 0;
     //__enable_interrupt();
     _BIS_SR(GIE + LPM3_bits);
-    for (;;)
-    {
-    }
+    for (;;){}
 }
 
 // timer0 trigger sampling
@@ -73,10 +75,40 @@ __interrupt void TA0_ISR(void)
             click = 0;
             P1IES |= BIT3; //button_down interrupt
         }
+        else if (click > 1) {
+            state = measure_low;
+            led_state = 6;
+            TA0CCR0 = 300 - 1; //0.25sec for sampling
+            click = 0;
+            _BIC_SR(LPM3_EXIT);
+//            __bic_SR_register_on_exit(LPM3_EXIT);
+            __bis_SR_register(LPM0_bits + GIE);
+        }
     }
-    else
+    else // measurement state
     {
         ADC10CTL0 |= ENC + ADC10SC; // enable sampling
+        if (click == 1) {
+            if (sec25 > 1) // double click time out
+            {
+                click = 0;
+                P1IES |= BIT3; //button_down interrupt
+                sec25 = 0;
+            }
+            else {
+               sec25++;
+            }
+        }
+        else if (click > 1) {
+            state = normal;
+            led_state = 0;
+            TA0CCR0 = 600 - 1; //0.5sec for detect button
+            click = 0;
+            _BIC_SR(LPM0_EXIT);
+//            _BIS_SR(LPM0_EXIT);
+//            __bic_SR_register_on_exit(LPM0_EXIT);
+            __bis_SR_register(LPM3_bits + GIE);
+        }
     }
 }
 
@@ -84,32 +116,19 @@ __interrupt void TA0_ISR(void)
 __interrupt void Port_1(void)
 {
     P1IFG &= ~BIT3; //rst
-    if (P1IES & BIT3)
-    { //button_down mode
-        //set timer1 for measure button down time
-        if (click == 0)
-        {                      // 第一次按下按鈕
+    //set timer1 for measure button down time
+    if (click == 0)// 第一次按下按鈕
+    {
+        if (state == normal) {
             TA0CCR0 = 600 - 1; //0.5sec
-            click = 1;
             TA0CTL |= TACLR;
-        }
-        else
-        {                   //第二次按下
-            P1IES &= ~BIT3; //button_up interrupt
-        }
+        } // 如果是mearsurement state，timerA0本來就在測量ADC的時間
+        click = 1;
+        sec25 = 0;
     }
-    else
-    { // button_up mode
-        if (click == 1)
-        {
-            state = measure_low;
-            TA0CTL |= TACLR;   // reset timerA-0
-            TA0CCR0 = 300 - 1; //0.25sec
-            _BIS_SR(LPM3_EXIT);
-            __bis_SR_register(LPM0_bits + GIE);
-        }
-        click = 0;
-        P1IES |= BIT3; //button_down interrupt
+    else //第二次按下
+    {
+        click++;
     }
 }
 
@@ -130,8 +149,8 @@ __interrupt void ADC10_ISR(void)
         if (state != measure_high) {
             state = measure_high;
             led_state = 8;
-            _BIS_SR(LPM3_EXIT);
-            __bis_SR_register(LPM0_bits + GIE);
+//            _BIS_SR(LPM3_EXIT);
+//            __bis_SR_register(LPM0_bits + GIE);
         }
     }
     else
@@ -139,8 +158,8 @@ __interrupt void ADC10_ISR(void)
         if (state != measure_low) {
             state = measure_low;
             led_state = 6;
-            _BIS_SR(LPM3_EXIT);
-            __bis_SR_register(LPM0_bits + GIE);
+//            _BIS_SR(LPM3_EXIT);
+//            __bis_SR_register(LPM0_bits + GIE);
         }
     }
 }
@@ -195,12 +214,14 @@ __interrupt void TA1_ISR(void)
             P1OUT &= ~0x41;
             P1OUT |= 0x41;
             led_state = 7;
+            time += 0.2;
         }
         else if (led_state == 7)
         {
             TA1CCR0 = 2400 - 1; //0.2 sec
             P1OUT &= ~0x41;
             led_state = 6;
+            time += 0.3;
         }
     }
     else {
@@ -210,12 +231,14 @@ __interrupt void TA1_ISR(void)
             P1OUT &= ~0x41;
             P1OUT |= 0x01;
             led_state = 9;
+            time += 0.2;
         }
         else if (led_state == 9)
         {
             TA1CCR0 = 2400 - 1; //0.2 sec
             P1OUT &= ~0x41;
             led_state = 8;
+            time += 0.2;
         }
     }
     TA1CTL &= ~TAIFG;
