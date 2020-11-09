@@ -7,6 +7,7 @@
 #define UART_TBIT (1000000 / 9600)
 #define normal 0
 #define enhanced 1
+
 unsigned int txData;    // UART internal TX variable
 unsigned char rxBuffer; // Received UART character
 int len = 0;
@@ -15,10 +16,15 @@ char slen[200];
 int hello = 0;
 int check = 0;
 int first = 0;
+volatile int adc[64]={0};
+int led_state = 0;
+// 0: green on, 1: green off, 2: red on, 3: red off
 
 void TimerA_UART_init(void);
 void TimerA_UART_tx(unsigned char byte);
 void TimerA_UART_print(char *string);
+void flash(char id, int on, int off);
+void temp(int interval, int times);
 
 void main(void)
 {
@@ -40,11 +46,28 @@ void main(void)
     P1IES |= BIT3;
     P1IFG &= ~BIT3;
 
+    // timer 0 for sampling
+    TA0CTL |= MC_3|ID_3|TASSEL_2|TACLR;
+    TA0CCTL1 = OUTMOD_3;
+    TA0CCTL0 |= CCIE; // enable timer 0的interrupt
+    TA0CCR0 = 17187; // 1sec
+
+    // tiemr 1 for led
     BCSCTL3 |= LFXT1S_2; // 使用VLO clock
     TA1CTL |= MC_1 | TASSEL_1 | TACLR | ID_0;
     TA1CCTL0 |= CCIE; // enable timer 1的interrupt
-    TA1CCR0 = 36000;  //3 sec
+    //TA1CCR0 = 1200;  //0.1 sec
+    TA1CCR0 = 10800-1; // 0.9 sec
     TA1CCTL0 &= ~CCIFG;
+
+    // ADC
+    ADC10CTL0 = ADC10SHT_2 | ADC10ON | ADC10IE | SREF_1 | REFON;
+    ADC10CTL0 &= ~REF2_5V;
+    ADC10CTL1 = SHS_1 | CONSEQ_2 | INCH_10;    // Input from A1
+    ADC10CTL0 |= ENC; // open sampling
+    // DTC
+    ADC10DTC1 = 4; // number of transfers
+    ADC10SA = (int)adc; // buffer starting address
 
     __enable_interrupt();
     TimerA_UART_init(); // Start Timer_A UART
@@ -81,6 +104,28 @@ void main(void)
     }
 }
 
+// sensor sampling
+// 是ADC要自己trigger? 還是要在temp裡面去拿ADC的值？
+// 8-n-2要怎麼用？
+#pragma vector = ADC10_VECTOR
+__interrupt void ADC10_ISR(void)
+{
+    ADC10SA = (int)adc;
+    temp = 0;
+    sum = 0;
+    for (i = 0; i < 64; i++) {
+        temp = adc[i];
+        sum += temp;
+    }
+    sum = sum * 1.5 / 1023.0;
+    average = (sum/64 - 0.986) / 0.00355;
+    if (average > threshold) {
+        state = enhanced;
+        flash('0', 200, 300);
+        ADC10CTL0 &= ~ENC; // close sampling
+    }
+}
+
 #pragma vector = TIMER1_A0_VECTOR
 __interrupt void TA1_ISR(void)
 {
@@ -88,9 +133,31 @@ __interrupt void TA1_ISR(void)
 
     TA1CTL &= ~TAIFG;
     TA1CTL |= TACLR;
-    if (state == enhanced) {
-        hello = 1;
-        __bic_SR_register_on_exit(LPM0_bits);
+    if (led_state == 0) {
+        P1OUT &= ~0x41; //控制LED全暗
+        led_state = 1;
+        TA1CCR0 = 6000-1;  //0.5 sec
+    }
+    else if (led_state == 1) {
+        P1OUT |= 0x40; // green led
+        led_state = 0;
+        TA1CCR0 = 10800-1; // 0.9 sec
+    }
+    else if (led_state == 2) {
+        P1OUT &= ~0x41; //控制LED全暗
+        led_state = 3;
+        TA1CCR0 = 3600;  //0.3 sec
+    }
+    else if (led_state == 3) {
+        P1OUT |= 0x01; // red led
+        led_state = 2;
+        TA1CCR0 = 2400; // 0.2 sec
+    }
+    else {
+        P1OUT |= 0x41; // error
+    }
+    if (state == normal) {
+        __bis_SR_register(LPM3_bits);
     }
 }
 
@@ -143,19 +210,19 @@ void TimerA_UART_tx(unsigned char byte)
     TA0CCR0 += UART_TBIT;      // One bit time till 1st bit
     TA0CCTL0 = OUTMOD0 + CCIE; // Set TXD on EQU0, Int
     txData = byte;             // Load char to be TXD
-    txData |= 0x100;           // Add stop bit to TXData
+    txData |= 0x300;           // Add stop bit to TXData
     txData <<= 1;              // Add start bit
 }
 
 #pragma vector = TIMER0_A0_VECTOR // TXD interrupt
 __interrupt void Timer_A0_ISR(void)
 {
-    static unsigned char txBitCnt = 10;
+    static unsigned char txBitCnt = 11;
     TA0CCR0 += UART_TBIT; // Set TA0CCR0 for next intrp
     if (txBitCnt == 0)
     {                      // All bits TXed?
         TA0CCTL0 &= ~CCIE; // Yes, disable intrpt
-        txBitCnt = 10;     // Re-load bit counter
+        txBitCnt = 11;     // Re-load bit counter
     }
     else
     {
@@ -205,4 +272,23 @@ __interrupt void Timer_A1_ISR(void)
         }
         break;
     }
+}
+
+void flash(char id, int on, int off) {
+    TA1CTL |= TACLR;
+    if (id == '0') {
+        P1OUT |= 0x01; // red led
+        led_state = 2;
+        TA1CCR0 = 2400; // 0.2 sec
+    }
+    else {
+        P1OUT |= 0x40; // green led
+        led_state = 0;
+        TA1CCR0 = 10800-1; // 0.9 sec
+    }
+}
+
+void temp(int interval, int times) {
+    TA0CTL |= TACLR;
+    TA0CCR0 = 17187; // 1sec
 }
