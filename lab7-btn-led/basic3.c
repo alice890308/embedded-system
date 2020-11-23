@@ -40,9 +40,10 @@ int buttonState[3];             // the current reading[i] from the input pin
 unsigned long lastDebounceTime[3] = {0,0,0};  // the last time the output pin was toggled
 byte debounceDelay = 50;    // the debounce time; increase if the output flickers
 //uint64_t time0[3],clk,countdown[3];
-unsigned int time0[3],clk,countdown[3];
+unsigned int time0[3] = {0, 0, 0},clk,countdown[3];
 int lastButtonState[3] ={0,0,0};   // the previous reading[i] from the input pin
 float temp;
+int state[3] = {0, 0, 0};
 
 bool gate[3]={1,1,1};
 int time_[3]={0,0,0};
@@ -52,6 +53,12 @@ void setup() {
     pinMode(led[i],1);       //define OUTOUT=1;
     pinMode(buttonPin[i],0); //define INPUT =0;
   }
+  noInterrupts(); // atomic access to timer reg.
+  TCCR1A = 0;    TCCR1B = 0;    TCNT1 = 0;
+  TCCR1B |= (1 << WGM12); // turn on CTC mode
+  TCCR1B |= (1<<CS12) | (1<<CS10); // 1024 prescaler
+  OCR1A = 1562;  // give 0.1 sec at 16 MHz/1024
+  interrupts(); // enable all interrupts
   Serial.begin(9600);
   // set initial LED state
 }
@@ -61,54 +68,57 @@ void loop() {
   for(int i=0;i<3;i++){
   reading[i] = digitalRead(buttonPin[i]);
 
-  // check to see if you just pressed the button
-  // (i.e. the input went from LOW to HIGH), and you've waited long enough
-  // since the last press to ignore any noise:
-
-  // If the switch changed, due to noise or pressing:
+// If the switch changed, due to noise or pressing:
   if (reading[i] != lastButtonState[i]) {
     // reset the debouncing timer
     lastDebounceTime[i] = millis();
   }
 
   if ((millis() - lastDebounceTime[i]) > debounceDelay) {
-    // whatever the reading[i] is at, it's been there for longer than the debounce
-    // delay, so take it as the actual current state:
-
     // if the button state has changed:
     if (reading[i] != buttonState[i]) {
       buttonState[i] = reading[i];
-
-      // only toggle the LED if the new button state is HIGH
     }
   }
-  if (buttonState[i]) {
+  if (buttonState[i]) { // light up led when pressing button
     digitalWrite(led[i],1);
+    if (gate[i]) {
+        time0[i] = 0;
+        gate[i] = 0;
+        state[i] = 0;
+    }
   }
-  if(buttonState[i] && gate[i]){
-    time0[i]=millis(); // newest pressing time
-    gate[i]=0;
-  }
-  if(!buttonState[i] && gate[i]==0){ 
-    time_[i]=millis()-time0[i]; // calculate duration
-    countdown[i]=millis(); // release time
+  if(!buttonState[i] && gate[i]==0){  // detecet release
     if (i == 0)
       Serial.print("Blue : ");
     else if (i == 1)
       Serial.print("Red : ");
     else if (i == 2)
       Serial.print("Green : ");
-    temp = time_[i] / 1000.0;
+    temp = time0[i] * 0.1;
     Serial.print(temp);
     Serial.println(" sec");
     gate[i]=1;
+    state[i] = 1; // flash led
   }
-  if(millis()-countdown[i]<=time_[i]){
+  if(time0[i] > 0 && state[i] == 1){
     //Serial.println(millis()%1000);
-    digitalWrite(led[i],(millis()%1000>500));
+    digitalWrite(led[i],(time0[i]%10>4));
   }
     
   // save the reading[i]. Next time through the loop, it'll be the lastButtonState[i]:
   lastButtonState[i] = reading[i];
+  }
+  if (TIFR1 & (1 << OCF1A)){
+    for(int i = 0; i < 3; i++) {
+        if (state[i] == 0) { // measure button pressed time
+            time0[i]++; // pressing
+        }
+        else { // led flash
+            if (time0[i] > 0)
+                time0[i]--;
+        }
+    }
+    TIFR1 = (1<<OCF1A); 
   }
 }
