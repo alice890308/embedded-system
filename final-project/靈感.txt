@@ -18,3 +18,30 @@ main:
 4. 根據nano回傳的加分指示，調整七段顯示器上的分數
 5. 遊戲結束，清空資料，顯示分數五秒，換成歷史最高分
 6. 若是在IDLE的時候刷了另外一張卡，則切換成另外一個使用者（目前就做兩個好了）
+
+目前main可以做到的事:
+1. 播音樂
+2. 根據譜面傳送亮燈訊號給nano
+
+目前main_dev中寫的東西:
+1. main
+2. main
+3. 紀錄score，接到nano的訊息後可以加分
+
+腳位 (uno)
+3 blue (rgb)
+5 green (rgb)
+6 red (rgb)
+7 7段顯示器, DIO
+8 7段顯示器, CLK
+9 RFID, reset
+10 RFID, SPI/SS
+11 RFID, MOSI
+12 RFID, MISO
+13 RFID, SCK
+a0 mp3 player, tx
+a1 mp3 player, rx
+a2 button
+a3 mp3 player, busy signal
+a4 i2c
+a5 i2c

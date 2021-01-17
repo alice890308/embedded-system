@@ -1,7 +1,7 @@
 #include "TM1637.h"
 
-#define CLK 11//pins definitions for TM1637 and can be changed to other ports
-#define DIO 10
+#define CLK 8//pins definitions for TM1637 and can be changed to other ports
+#define DIO 7
 
 int8_t TimeDisp[] = {0x00,0x00,0x00,0x00};
 TM1637 tm1637(CLK,DIO);
