@@ -16,11 +16,11 @@ boolean data[10][7] = {
 };
 
 const int photo1 = A0, photo2 = A1;
-const int trigPin = 11, echoPin = 10;
+const int trigPin = 19, echoPin = 18;
 long duration, distance;
 int photo1_val, photo2_val;
 int speed = 0;
-int redPin = 16, greenPin = 17, bluePin = 18;
+int redPin = 9, greenPin = 10, bluePin = 11;
 
 void handle_photo1(void *pvParameters);
 void handle_photo2(void *pvParameters);
@@ -125,14 +125,14 @@ void cal_speed(void *pvParameters)
     for (;;)
     { // A Task shall never return or exit.
         // to display the number 0, 1, or 2
-        if (photo1_val < 700 && photo2_val > 700)
+        if (photo1_val < 800 && photo2_val > 800)
         { // only photo1 dark, speed down
             if (speed > 0)
             {
                 speed--;
             }
         }
-        if (photo1_val > 700 && photo2_val < 700)
+        if (photo1_val > 800 && photo2_val < 800)
         { //onlyt photo2 dark, speed up
             if (speed < 9)
             {
