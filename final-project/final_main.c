@@ -44,7 +44,7 @@ int curUser = 0;
 /* 播音樂 */
 int curSong = 4;
 int cur_pos = 0;
-unsigned int initial_time = 0;
+long long int initial_time = 0;
 int hit_pos = 0;
 int ttemp;
 

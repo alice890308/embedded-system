@@ -16,12 +16,6 @@ int row = 0;
 int col = 0;
 int cur_pos[MAX_SHOWING][2];
 
-/* 點擊 */
-const int buttonPin =2;
-int flag = true;
-int flag_counter = 0;
-
-/* state */
 int state = IDLE;
 
 void light(byte x,byte y);
@@ -43,9 +37,6 @@ void setup() {
         cur_pos[i][j] = -1;
     }
 
-    /* 點擊 */
-    //attachInterrupt(0, handle_btn1_click, FALLING);
-
     /* timer interrupt */
     cli();
     TCCR1A = 0;    TCCR1B = 0;    TCNT1 = 0;
@@ -58,27 +49,17 @@ void setup() {
     //initial_time = millis();
 }
 
-// void handle_btn1_click(){
-//     Serial.println("hit!!");
-//     Wire.beginTransmission(0x07);
-//     Wire.write('h'); 
-//     Wire.endTransmission();
-//     Serial.println("send! hit signal");
-// }
-
 void receiveEvent(int bytes) {
     while(Wire.available()){//wire.read裡面有一個佇列，會依序取出傳來的數字，available這個函數是現在這個佇列裡面有幾筆資料
         fromUno = Wire.read();
-        //Serial.print("state = ");
-        //Serial.println(state);
+        Serial.print("state = ");
+        Serial.println(state);
         if (fromUno == 15) { // 結束訊號
             state = IDLE;
-            Serial.println("receive end");
             reset_all();
         }
         else if (fromUno == 10) { // 開始訊號
             state = SHINE;
-            Serial.println("receive start");
         }
         else if (state == SHINE) {
             show_note(fromUno);
@@ -90,28 +71,11 @@ void receiveEvent(int bytes) {
 
 void loop()
 {
-    if (flag_counter >= 500) {
-        flag_counter = 0;
-        flag = true;
-    }
-    if (state == IDLE) {
-        dark();
-    }
-    else if (state == SHINE) {
-        /* 亮LED燈 */
+    if (state == SHINE) {
         for(int i = 0; i < MAX_SHOWING-1; i++) {
             if (cur_pos[i][0] != -1 && cur_pos[i][1] != -1) {
                 light(cur_pos[i][0], cur_pos[i][1]);
             }
-        }
-
-        /* 點擊 */
-        if (digitalRead(2) && flag == true) {
-            flag = false;
-            Serial.println("hit!!");
-            Wire.beginTransmission(0x07);
-            Wire.write('h'); 
-            Wire.endTransmission();
         }
     }
 }
@@ -144,22 +108,20 @@ void reset_all()
 }
 
 void show_note(int col_num) {
-    int get_pos = -1;
-    for(int i = 0; i < 6; i++) {
-        for(int i = 0; i < MAX_SHOWING-1; i++) {
-            if (cur_pos[i][0] == -1) {
-                get_pos = i;
-                break;
-            }
-        }
-        if (get_pos != -1) {
-            cur_pos[get_pos][0] = 7; // set row(最內圈)
-            cur_pos[get_pos][1] = i; // set col
-        }
-        else {
-            Serial.println("cur_pos full!");
-        }
+  int get_pos = -1;
+  for(int i = 0; i < MAX_SHOWING-1; i++) {
+    if (cur_pos[i][0] == -1) {
+      get_pos = i;
+      break;
     }
+  }
+  if (get_pos != -1) {
+    cur_pos[get_pos][0] = 7; // set row(最內圈)
+    cur_pos[get_pos][1] = col_num; // set col
+  }
+  else {
+    Serial.println("cur_pos full!");
+  }
 }
 
 ISR(TIMER1_COMPA_vect)
@@ -175,5 +137,4 @@ ISR(TIMER1_COMPA_vect)
             }
         }
     }
-    flag_counter += 250;
 }
