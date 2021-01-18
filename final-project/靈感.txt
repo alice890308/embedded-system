@@ -22,6 +22,7 @@ main:
 目前main可以做到的事:
 1. 播音樂
 2. 根據譜面傳送亮燈訊號給nano
+3. 讀取使用者的卡片，判斷是哪一個使用者
 
 目前main_dev中寫的東西:
 1. main
@@ -43,5 +44,5 @@ a0 mp3 player, tx
 a1 mp3 player, rx
 a2 button
 a3 mp3 player, busy signal
-a4 i2c
-a5 i2c
+a4 i2c SDA
+a5 i2c SCL

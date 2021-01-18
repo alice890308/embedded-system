@@ -42,7 +42,7 @@ bool detectUser = false;
 int curUser = 0;
 
 /* 播音樂 */
-int curSong = 4;
+int curSong = 1;
 int cur_pos = 0;
 unsigned int initial_time = 0;
 int hit_pos = 0;

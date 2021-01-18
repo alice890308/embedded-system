@@ -1,4 +1,4 @@
-#include"easyTimer.h"
+//#include"easyTimer.h"
 #define MAX_SHOWING 15
 #define LIGHT_ALL 14
 #define MAX_NOTE 4
@@ -15,11 +15,10 @@ int note_pos = 0; // 紀錄現在顯示到第幾個note
 int note[37][2] = { // 
   10, 0,
   3000, 1,
-  6000, 3,
-  10000, 5,
-  14000, 0
+  6000, 2,
+  10000, 3,
+  14000, 4
 };
-int counter = 0;
 
 void light(byte x,byte y);
 void dark();
