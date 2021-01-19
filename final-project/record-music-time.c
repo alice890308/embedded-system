@@ -8,7 +8,7 @@
 #define PLAYING 2
 #define SHOW_SCORE 3
 
-SoftwareSerial mySoftwareSerial(A1, A0); // RX, TX
+SoftwareSerial mySoftwareSerial(4, 2); // RX, TX
 DFRobotDFPlayerMini myDFPlayer;
 
 int Red = 6;
@@ -16,11 +16,11 @@ int Green = 5;
 int Blue = 3;
 int Button = A2;
 int IsFree = A3;
-int curSong = 1;
+int curSong = 2;
 int state = 1; // 用來表示現在位於哪個階段
 char fromNano = '\0';
 
-unsigned int initial_time = 0;
+long long int initial_time = 0;
 int flag = 0;
 int temp;
 

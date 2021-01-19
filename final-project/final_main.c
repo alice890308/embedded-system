@@ -13,7 +13,8 @@
 #define SHOW_SCORE 3
 #define CLEAR 4
 
-#define MAX_1_NOTE 10
+#define MAX_1_NOTE 24
+#define MAX_2_NOTE 60
 
 #define RST_PIN         9          
 #define SS_PIN          10 //RC522卡上的SDA
@@ -43,7 +44,7 @@ bool detectUser = false;
 int curUser = 0;
 
 /* 播音樂 */
-int curSong = 4;
+int curSong = 1;
 int cur_pos = 0;
 long long int initial_time = 0;
 int ttemp;
@@ -59,17 +60,94 @@ int highest_2 = 0; // user 2 highest score
 int8_t TimeDisp[] = {0x00,0x00,0x00,0x00};
 
 /* 譜面 */
-const int note1[37][2] = {
-    4086, 0,
-    4944, 1,
-    5882, 2,
-    6748, 3,
-    7722, 4,
-    8646,5,
-    9580,0,
-    10504,1,
-    11429,2,
-    12290,3
+const long int note1[37][2] = {
+    4506, 0,
+    5467, 0,
+    6387, 0,
+    7271, 0,
+    8172, 0,
+    9092, 0,
+    10031, 0,
+    10993, 0,
+    11927, 0,
+    12816, 0,
+    13664, 0,
+    14605, 0,
+    15489, 0,
+    16399, 0,
+    17338, 0,
+    20141, 0,
+    21986, 0,
+    23810, 0,
+    25639, 0,
+    27501, 0,
+    29374, 0,
+    30528, 0,
+    31278, 0
+};
+
+const long int note2[75][2] = {
+    2749, 0,
+    4041, 0,
+    5349, 0,
+    6026, 0,
+    6686, 0,
+    6773, 0,
+    7302, 0,
+    7417, 0,
+    7870, 0,
+    8168, 0,
+    8513, 0,
+    8814, 0,
+    9128, 0,
+    9486, 0,
+    9810, 0,
+    10164, 0,
+    10465, 0,
+    11773, 0,
+    13077, 0,
+    14344, 0,
+    15587, 0,
+    15909, 0,
+    16235, 0,
+    16919, 0,
+    17582, 0,
+    18191, 0,
+    18782, 0,
+    19460, 0,
+    19751, 0,
+    20053, 0,
+    20380, 0,
+    20672, 0,
+    21017, 0,
+    21354, 0,
+    22016, 0,
+    22660, 0,
+    23317, 0,
+    23948, 0,
+    24591, 0,
+    25214, 0,
+    25833, 0,
+    26178, 0,
+    26513, 0,
+    27191, 0,
+    27876, 0,
+    28486, 0,
+    29079, 0,
+    29751, 0,
+    29855, 0,
+    30027, 0,
+    30335, 0,
+    30645, 0,
+    35274, 0,
+    37097, 0,
+    37406, 0,
+    37731, 0,
+    38064, 0,
+    38402, 0,
+    38515, 0,
+    38748, 0,
+    39064, 0
 };
 
 void StartGame();
@@ -167,7 +245,6 @@ void loop()
         joystick_in = analogRead(x_posision);
         
         if (joystick_in > 1000 || joystick_in < 10) {
-            
             ChangeSong();
         }
         if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) { //偵測到刷卡
@@ -180,13 +257,28 @@ void loop()
         ttemp = digitalRead(IsFree);
         if (ttemp == 0) { //還在播音樂
             /*  傳送音符給nano，讓他亮出來 */
-            if ((cur_pos < MAX_1_NOTE) && ((millis()-initial_time) > note1[cur_pos][0])) {
-                Wire.beginTransmission(0x9);
-                Wire.write(note1[cur_pos][1]); 
-                Wire.endTransmission();
-                Serial.println("send!");
-                //Serial.println(note1[cur_pos][1]);
-                cur_pos++;
+            
+            if (curSong == 1) {
+                if ((cur_pos < MAX_1_NOTE) && ((millis()-initial_time) > note1[cur_pos][0])) {
+                    Wire.beginTransmission(0x9);
+                    Wire.write(note1[cur_pos][1]); 
+                    Wire.endTransmission();
+                    Serial.println("send!");
+                    //Serial.println(note1[cur_pos][1]);
+                    cur_pos++;
+                }
+            }
+            else if (curSong == 2) {
+                
+                if ((cur_pos < MAX_2_NOTE) && ((millis()-initial_time) > note2[cur_pos][0])) {
+                    Serial.println(curSong);
+                    Wire.beginTransmission(0x9);
+                    Wire.write(note2[cur_pos][1]); 
+                    Wire.endTransmission();
+                    Serial.println("send!");
+                    //Serial.println(note1[cur_pos][1]);
+                    cur_pos++;
+                }
             }
         }
         else if(ttemp == 1) {
@@ -252,15 +344,15 @@ void ChangeScore()
 
 void ChangeSong()
 {
-    if (joystick_in > 1000 && curSong == 1) { // 換成song 2, 現在先用4
-        curSong = 4;
+    if (joystick_in > 1000 && curSong == 1) { // 換成song 2, 現在先用
+        curSong = 2;
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.print("Change to Song 4");
+        lcd.print("Change to Song 2");
         delay(1000);
         DisplayUser();
     }
-    else if (joystick_in < 10 && curSong == 4) { // 換成song 1
+    else if (joystick_in < 10 && curSong == 2) { // 換成song 1
         curSong = 1;
         lcd.clear();
         lcd.setCursor(0, 0);
