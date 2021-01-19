@@ -20,7 +20,7 @@
 
 int8_t TimeDisp[] = {0x00,0x00,0x00,0x00};
 TM1637 tm1637(CLK,DIO);
-SoftwareSerial mySoftwareSerial(A1, A0); // RX, TX
+SoftwareSerial mySoftwareSerial(2, 4); // RX, TX
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 DFRobotDFPlayerMini myDFPlayer;
 MFRC522 mfrc522;   // 建立MFRC522實體
@@ -31,7 +31,7 @@ int Green = 5;
 int Blue = 3;
 int Button = A2;
 int IsFree = A3;
-
+byte x_posision = A0;
 /* 流程控制 */
 int state = 0; // 用來表示現在位於哪個階段
 
@@ -141,6 +141,7 @@ void loop()
     //Serial.println(state);
     //ttemp = digitalRead(IsFree);
     //Serial.println(state);
+    Serial.println(analogRead(x_posision));
     tm1637.display(TimeDisp);
     if (state == GET_USER) {
         if(detectUser) { // 已經偵測並且讀取到user
@@ -161,10 +162,12 @@ void loop()
             //Serial.println("state = Playing");
             //delay(5000);
         }
-        if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) { //偵測到刷卡
+/*
+ *         if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) { //偵測到刷卡
             detectUser = true;
             state = GET_USER;
         }
+ */
     }
     else if (state == PLAYING) {
         //Serial.println(ttemp);
