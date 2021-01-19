@@ -11,6 +11,8 @@
 #define START_GAME 1
 #define PLAYING 2
 #define SHOW_SCORE 3
+#define CLEAR 4
+
 #define MAX_1_NOTE 10
 
 #define RST_PIN         9          
@@ -18,9 +20,8 @@
 #define CLK 8//pins definitions for TM1637 and can be changed to other ports
 #define DIO 7
 
-int8_t TimeDisp[] = {0x00,0x00,0x00,0x00};
 TM1637 tm1637(CLK,DIO);
-SoftwareSerial mySoftwareSerial(2, 4); // RX, TX
+SoftwareSerial mySoftwareSerial(4, 2); // RX, TX
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 DFRobotDFPlayerMini myDFPlayer;
 MFRC522 mfrc522;   // 建立MFRC522實體
@@ -45,16 +46,17 @@ int curUser = 0;
 int curSong = 4;
 int cur_pos = 0;
 long long int initial_time = 0;
-int hit_pos = 0;
 int ttemp;
+int joystick_in;
 
 /* 溝通 */
 char fromNano = '\0';
 
-/* 遊戲 */
+/* 遊戲分數 */
 int score = 0;
 int highest_1 = 0; // user 1 highest score
 int highest_2 = 0; // user 2 highest score
+int8_t TimeDisp[] = {0x00,0x00,0x00,0x00};
 
 /* 譜面 */
 const int note1[37][2] = {
@@ -70,23 +72,13 @@ const int note1[37][2] = {
     12290,3
 };
 
-/* 模仿nano回傳值 */
-const int hit[37] = {
-    6086,
-    6944, 
-    7882, 
-    8748, 
-    9722, 
-    10646, 
-    11580, 
-    12504, 
-    13429, 
-    14290
-};
-
 void StartGame();
 void CheckIdentity(byte *buffer);
 void DisplayScore();
+void ChangeScore();
+void ResetAll();
+void ChangeSong();
+void DisplayUser();
 
 void setup()
 {
@@ -107,8 +99,12 @@ void setup()
     lcd.init();   // initialize LCD
     lcd.backlight();    // open LCD backlight
     
-    tm1637.set(); // 七段顯示器
     tm1637.init();
+    tm1637.set(BRIGHT_TYPICAL); // 七段顯示器
+    tm1637.display(0,0);  //設定每一位燈號顯示的內容，參數1：燈號，參數2：顯示的數字
+    tm1637.display(1,0); 
+    tm1637.display(2,0);
+    tm1637.display(3,0);
 
     pinMode(Button, INPUT_PULLUP); //return LOW when down
     pinMode(Red, OUTPUT);
@@ -131,8 +127,14 @@ void setup()
 /* 如果uno接收到資料的話就會call這個function */
 void receiveEvent(int bytes) {
     while(Wire.available()){//wire.read裡面有一個佇列，會依序取出傳來的數字，available這個函數是現在這個佇列裡面有幾筆資料
-      fromNano = Wire.read();
-      Serial.println(fromNano);
+        fromNano = Wire.read();
+        if (fromNano == 'h') {
+            score += 5;
+            ChangeScore();
+            Serial.print("score = ");
+            Serial.println(score);
+        }
+        Serial.println(fromNano);
     }
 }
 
@@ -141,8 +143,8 @@ void loop()
     //Serial.println(state);
     //ttemp = digitalRead(IsFree);
     //Serial.println(state);
-    Serial.println(analogRead(x_posision));
-    tm1637.display(TimeDisp);
+    //Serial.println(analogRead(x_posision));
+    DisplayScore();
     if (state == GET_USER) {
         if(detectUser) { // 已經偵測並且讀取到user
             detectUser = false;
@@ -162,12 +164,16 @@ void loop()
             //Serial.println("state = Playing");
             //delay(5000);
         }
-/*
- *         if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) { //偵測到刷卡
+        joystick_in = analogRead(x_posision);
+        
+        if (joystick_in > 1000 || joystick_in < 10) {
+            
+            ChangeSong();
+        }
+        if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) { //偵測到刷卡
             detectUser = true;
             state = GET_USER;
         }
- */
     }
     else if (state == PLAYING) {
         //Serial.println(ttemp);
@@ -182,10 +188,6 @@ void loop()
                 //Serial.println(note1[cur_pos][1]);
                 cur_pos++;
             }
-            // if ((hit_pos < MAX_1_NOTE) && ((millis()-initial_time) > hit[hit_pos])) {
-            //     score += 5;
-            //     DisplayScore();
-            // }
         }
         else if(ttemp == 1) {
             Serial.print("in else, is free = ");
@@ -196,19 +198,102 @@ void loop()
             Wire.endTransmission();
             Serial.println("send! end signal");
           //delay(5000);
-          state = START_GAME;
+            state = CLEAR;
         }
+    }
+    else if (state == CLEAR) {
+        ResetAll();
+        state = START_GAME;
     }
 
 }
 
+void DisplayUser()
+{
+    lcd.clear();
+    if (curUser == 1) {
+        lcd.setCursor(0, 0);
+        lcd.print("Welcome User 1!");
+        lcd.setCursor(0, 1);
+        lcd.print("Highest: ");
+        lcd.print(highest_1);
+    }
+    else if (curUser == 2) {
+        lcd.setCursor(0, 0);
+        lcd.print("Welcome User 2!");
+        lcd.setCursor(0, 1);
+        lcd.print("Highest: ");
+        lcd.print(highest_2);
+    }
+    else {
+        Serial.println("unknown user");
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("unknown user");
+    }
+}
+
 void DisplayScore()
 {
+    tm1637.display(0,TimeDisp[0]);  //設定每一位燈號顯示的內容，參數1：燈號，參數2：顯示的數字
+    tm1637.display(1,TimeDisp[1]); 
+    tm1637.display(2,TimeDisp[2]);
+    tm1637.display(3,TimeDisp[3]);
+}
+
+void ChangeScore()
+{
     int temp = score;
-    for(int i = 3; i >= 0; i++) {
+    for(int i = 3; i >= 0; i--) {
         TimeDisp[i] = temp % 10;
         temp /= 10;
     }
+}
+
+void ChangeSong()
+{
+    if (joystick_in > 1000 && curSong == 1) { // 換成song 2, 現在先用4
+        curSong = 4;
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Change to Song 4");
+        delay(1000);
+        DisplayUser();
+    }
+    else if (joystick_in < 10 && curSong == 4) { // 換成song 1
+        curSong = 1;
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Change to Song 1");
+        delay(1000);
+        DisplayUser();
+    }
+}
+
+void ResetAll()
+{
+    /* 顯示最終分數 */
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Final Score!");
+    lcd.setCursor(1, 1);
+    lcd.print(score);
+    /* 更新歷史紀錄 */
+    if (curUser == 1) {
+        if (score > highest_1) {
+            highest_1 = score;
+        }
+    }
+    else if (curUser == 2) {
+        if (score > highest_2) {
+            highest_2 = score;
+        }
+    }
+    score = 0;
+    ChangeScore(); // 把七段顯示器歸零
+
+    delay(3000); // 顯示分數三秒
+    DisplayUser();
 }
 
 void StartGame()
@@ -256,14 +341,10 @@ void CheckIdentity(byte *buffer)
         }
     }
     if (find == true) {
-        curUser = 1;
-        Serial.println("is user1!");
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("Welcome User 1!");
-        lcd.setCursor(2, 1);
-        lcd.print("Highest Score: ");
-        lcd.print(highest_1);
+        if (curUser != 1) {
+            curUser = 1;
+            DisplayUser();
+        }
         return;
     }
     //比對user 2
@@ -276,20 +357,15 @@ void CheckIdentity(byte *buffer)
     }
     
     if (find == true) {
-        curUser = 2;
-        Serial.println("is user2!");
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("Welcome User 2!");
-        lcd.setCursor(2, 1);
-        lcd.print("Highest Score: ");
-        lcd.print(highest_2);
+        if (curUser != 2) {
+            curUser = 2;
+            DisplayUser();
+        }
         return;
     } else {
-        curUser = 0;
-        Serial.println("unknown user");
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("unknown user");
+        if (curUser != 0){
+            curUser = 0;
+            DisplayUser();
+        } 
     }
 }
