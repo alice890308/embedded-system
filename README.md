@@ -9,4 +9,4 @@ I designed a music arcade game called Mia, which is a simpler version of [maimai
   - Senven Segment Displayer
   - RFID
   - LCD
-- The complete report can be found here.
+- The complete report can be found [here](./final-project/Final_report_107062308.pdf).
